@@ -1,5 +1,5 @@
-# lindblad_dynamics_approxiator
+# Lindblad dynamics approxiator
 
 Repository for the paper 'Inferring dynamical generators of local quantum observables from projective measurements through machine learning'
 
-(da lunedi' nelle milgiori librerie
+(da lunedi' nelle milgiori librerie)
