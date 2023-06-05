@@ -95,7 +95,7 @@ class MLLP(nn.Module):
         with torch.no_grad():
             Lindblad = self.MLP.get_L()
             for i in range(length-1):
-                exp_dt_L = torch.linalg.matrix_exp(i*self.dt*Lindblad )
+                exp_dt_L = torch.matrix_exp(i*self.dt*Lindblad )
                 y = torch.add(0.5*exp_dt_L[1:,0], X @ torch.transpose(exp_dt_L[1:,1:],0,1))
                 results.extend([y.numpy()])
 

@@ -2,8 +2,10 @@
 '''
 import numpy as np
 import torch
-
-from sfw.constraints import create_simplex_constraints
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from .sfw.constraints import create_simplex_constraints
 
 def train(model, criterion, optimizer, scheduler, train_loader, n_epochs, device,
          alpha_1, alpha_2):
