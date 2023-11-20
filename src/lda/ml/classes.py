@@ -7,7 +7,8 @@ from torch import nn
 import h5py
 from torch.utils.data.dataset import Dataset
 
-from ml.utils import pauli_s_const, get_arch_from_layer_list
+from lda.ml.utils import pauli_s_const, get_arch_from_layer_list
+
 
 class CustomDatasetFromHDF5(Dataset):
     '''Class implementing the Dataset object from HDF5 file.
@@ -30,18 +31,22 @@ class CustomDatasetFromHDF5(Dataset):
             self.X = []
             self.y = []
             self.t = []
-            self.V = [] # dummy vector (legacy previous implementations)
+            self.V = []  # dummy vector (legacy previous implementations)
 
             self.X.extend(f[group + '/X'][()])
             self.y.extend(f[group + '/y'][()])
             self.t.extend(f[group + '/t'][()])
-            self.V.extend([0]*len(f[group + '/X'][()]))
+            self.V.extend([0] * len(f[group + '/X'][()]))
 
     def __getitem__(self, index):
         # return the potential and the vector at t and t+dt
         # as tensors
-        return torch.tensor(self.V[index]), torch.tensor(self.t[index]), \
-            torch.tensor(self.X[index]), torch.tensor(self.y[index])
+        return (
+            torch.tensor(self.V[index]),
+            torch.tensor(self.t[index]),
+            torch.tensor(self.X[index]),
+            torch.tensor(self.y[index]),
+        )
 
     def __len__(self):
         return len(self.X)
@@ -82,21 +87,24 @@ class MLLP(nn.Module):
             Initial conditions
         T : int
             Total time of the evolution
-            
+
         Return
         ------
         vector of vectors representing the v(t) at each instant of time.
         '''
         X = torch.Tensor(v_0)
 
-        length = int(T/self.dt)
+        length = int(T / self.dt)
 
         results = [v_0]
         with torch.no_grad():
             Lindblad = self.MLP.get_L()
-            for i in range(length-1):
-                exp_dt_L = torch.matrix_exp(i*self.dt*Lindblad )
-                y = torch.add(0.5*exp_dt_L[1:,0], X @ torch.transpose(exp_dt_L[1:,1:],0,1))
+            for i in range(length - 1):
+                exp_dt_L = torch.matrix_exp(i * self.dt * Lindblad)
+                y = torch.add(
+                    0.5 * exp_dt_L[1:, 0],
+                    X @ torch.transpose(exp_dt_L[1:, 1:], 0, 1),
+                )
                 results.extend([y.numpy()])
 
         return results
@@ -135,8 +143,12 @@ class exp_LL(nn.Module):
         # Dissipative parameters v = Re(v) + i Im(v) = x + i y
         # NOTE: v is called Z on the paper, it represents the complx matrix
         #       used to build the kossakowski matrix c = Z^T Z
-        v_re = torch.zeros([self.data_dim, self.data_dim],requires_grad=True).float()
-        v_im = torch.zeros([self.data_dim, self.data_dim],requires_grad=True).float()
+        v_re = torch.zeros(
+            [self.data_dim, self.data_dim], requires_grad=True
+        ).float()
+        v_im = torch.zeros(
+            [self.data_dim, self.data_dim], requires_grad=True
+        ).float()
         self.v_x = nn.Parameter(v_re)
         self.v_y = nn.Parameter(v_im)
 
@@ -148,12 +160,11 @@ class exp_LL(nn.Module):
         nn.init.kaiming_uniform_(self.v_x, a=1)
         nn.init.kaiming_uniform_(self.v_y, a=1)
         fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.v_x)
-        bound = 1. / np.sqrt(fan_in)
+        bound = 1.0 / np.sqrt(fan_in)
         nn.init.uniform_(self.omega, -bound, bound)
 
     def get_L(self):
-        ''' Function that returns the learned Lindbladian.
-        '''
+        '''Function that returns the learned Lindbladian.'''
         v_x = self.v_x
         v_y = self.v_y
         # Structure constant for SU(n) are defined
@@ -162,28 +173,32 @@ class exp_LL(nn.Module):
         #       +
         # c = v   v =  ∑  x     x    + y   y    + i ( x   y  - y   x   )
         #              k    ki   kj     ki  kj         ki  kj   ki  kj
-        c_re = torch.add(torch.einsum('ki,kj->ij', v_x, v_x),\
-                         torch.einsum('ki,kj->ij', v_y, v_y)  )
-        c_im = torch.add(torch.einsum('ki,kj->ij', v_x, v_y),\
-                         -torch.einsum('ki,kj->ij', v_y, v_x) )
+        c_re = torch.add(
+            torch.einsum('ki,kj->ij', v_x, v_x),
+            torch.einsum('ki,kj->ij', v_y, v_y),
+        )
+        c_im = torch.add(
+            torch.einsum('ki,kj->ij', v_x, v_y),
+            -torch.einsum('ki,kj->ij', v_y, v_x),
+        )
 
         # Here I impose the fact c_re is symmetric and c_im antisymmetric
-        re_1 = -4.*torch.einsum('mjk,nik,ij->mn', self.f, self.f, c_re )
-        re_2 = -4.*torch.einsum('mik,njk,ij->mn', self.f, self.f, c_re )
-        im_1 =  4.*torch.einsum('mjk,nik,ij->mn', self.f, self.d, c_im )
-        im_2 = -4.*torch.einsum('mik,njk,ij->mn', self.f, self.d, c_im )
-        d_super_x_re = torch.add(re_1, re_2 )
-        d_super_x_im = torch.add(im_1, im_2 )
+        re_1 = -4.0 * torch.einsum('mjk,nik,ij->mn', self.f, self.f, c_re)
+        re_2 = -4.0 * torch.einsum('mik,njk,ij->mn', self.f, self.f, c_re)
+        im_1 = 4.0 * torch.einsum('mjk,nik,ij->mn', self.f, self.d, c_im)
+        im_2 = -4.0 * torch.einsum('mik,njk,ij->mn', self.f, self.d, c_im)
+        d_super_x_re = torch.add(re_1, re_2)
+        d_super_x_im = torch.add(im_1, im_2)
         d_super_x = torch.add(d_super_x_re, d_super_x_im)
 
-        tr_id = 2.*torch.einsum('imj,ij ->m', self.f, c_im )
+        tr_id = 2.0 * torch.einsum('imj,ij ->m', self.f, c_im)
 
-        h_commutator_x = -4.* torch.einsum('ijk,k->ij', self.f, self.omega)
+        h_commutator_x = -4.0 * torch.einsum('ijk,k->ij', self.f, self.omega)
 
         # building the Lindbladian operator
-        L = torch.zeros(self.data_dim+1, self.data_dim+1)
-        L[1:,1:] = torch.add(h_commutator_x, d_super_x)
-        L[1:,0] = tr_id
+        L = torch.zeros(self.data_dim + 1, self.data_dim + 1)
+        L[1:, 1:] = torch.add(h_commutator_x, d_super_x)
+        L[1:, 0] = tr_id
 
         return L
 
@@ -195,8 +210,10 @@ class exp_LL(nn.Module):
         """
         L = self.get_L()
 
-        exp_dt_L = torch.matrix_exp(self.dt*L ).float()
-        return torch.add(0.5*exp_dt_L[1:,0], x @ torch.transpose(exp_dt_L[1:,1:],0,1))
+        exp_dt_L = torch.matrix_exp(self.dt * L).float()
+        return torch.add(
+            0.5 * exp_dt_L[1:, 0], x @ torch.transpose(exp_dt_L[1:, 1:], 0, 1)
+        )
 
     def forward_t(self, t, x):
         """Forward step of the Layer.
@@ -204,8 +221,11 @@ class exp_LL(nn.Module):
         """
         L = self.get_L()
 
-        exp_dt_L = torch.matrix_exp( torch.einsum('b,ij->bij', t, L) ).float()
-        return torch.add(0.5*exp_dt_L[:,1:,0], torch.einsum('bi,bji->bj', x, exp_dt_L[:,1:,1:]))
+        exp_dt_L = torch.matrix_exp(torch.einsum('b,ij->bij', t, L)).float()
+        return torch.add(
+            0.5 * exp_dt_L[:, 1:, 0],
+            torch.einsum('bi,bji->bj', x, exp_dt_L[:, 1:, 1:]),
+        )
 
     def gap(self):
         '''Function to calculate the Lindblad gap, meaning
@@ -217,4 +237,3 @@ class exp_LL(nn.Module):
 
         e_val.sort()
         return np.abs(e_val[-2])
-

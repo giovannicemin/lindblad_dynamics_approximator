@@ -4,11 +4,22 @@ import numpy as np
 import torch
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from .sfw.constraints import create_simplex_constraints
 
-def train(model, criterion, optimizer, scheduler, train_loader, n_epochs, device,
-         alpha_1, alpha_2):
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from lda.ml.sfw.constraints import create_simplex_constraints
+
+
+def train(
+    model,
+    criterion,
+    optimizer,
+    scheduler,
+    train_loader,
+    n_epochs,
+    device,
+    alpha_1,
+    alpha_2,
+):
     '''Function to train the model in place
 
     Parameters
@@ -36,15 +47,16 @@ def train(model, criterion, optimizer, scheduler, train_loader, n_epochs, device
     '''
     mean_train_loss = []
 
-    for epoch in range(1, n_epochs+1):
+    for epoch in range(1, n_epochs + 1):
         model.train()
         print('= Starting epoch ', epoch, '/', n_epochs)
 
         summed_train_loss = np.array([])
 
         # Train
-        for batch_index, (vv, t, batch_in, batch_out) in enumerate(train_loader):
-
+        for batch_index, (vv, t, batch_in, batch_out) in enumerate(
+            train_loader
+        ):
             constraints = create_simplex_constraints(model)
 
             X = batch_in.float().to(device)
@@ -55,7 +67,7 @@ def train(model, criterion, optimizer, scheduler, train_loader, n_epochs, device
 
             # apply the model
             recon_y = model.forward(t=t, x=X)
-            
+
             # calculate the loss
             loss = criterion(recon_y, y)
             # sum to the loss per epoch
@@ -63,14 +75,14 @@ def train(model, criterion, optimizer, scheduler, train_loader, n_epochs, device
 
             # weights regularization : Elastic net
             if len(alpha_1) != 0:
-                loss += alpha_1[0]*torch.norm(model.MLP.v_x, 1)
-                loss += alpha_1[0]*torch.norm(model.MLP.v_y, 1)
-                loss += alpha_1[1]*torch.norm(model.MLP.omega, 1)
+                loss += alpha_1[0] * torch.norm(model.MLP.v_x, 1)
+                loss += alpha_1[0] * torch.norm(model.MLP.v_y, 1)
+                loss += alpha_1[1] * torch.norm(model.MLP.omega, 1)
 
             if len(alpha_2) != 0:
-                loss += alpha_2[0]*torch.norm(model.MLP.v_x)
-                loss += alpha_2[0]*torch.norm(model.MLP.v_y)
-                loss += alpha_2[1]*torch.norm(model.MLP.omega)
+                loss += alpha_2[0] * torch.norm(model.MLP.v_x)
+                loss += alpha_2[0] * torch.norm(model.MLP.v_y)
+                loss += alpha_2[1] * torch.norm(model.MLP.omega)
 
             # backpropagate = calculate derivatives
             loss.backward(retain_graph=True)
@@ -89,15 +101,14 @@ def train(model, criterion, optimizer, scheduler, train_loader, n_epochs, device
 
     return mean_train_loss
 
+
 def eval(model, criterion, eval_loader, device):
-    '''Function to evaluate the model
-    '''
+    '''Function to evaluate the model'''
 
     model.eval()
     summed_eval_loss = np.array([])
 
     for batch_index, (vv, t, batch_in, batch_out) in enumerate(eval_loader):
-
         X = batch_in.float().to(device)
         y = batch_out.float().to(device)
 

@@ -7,25 +7,27 @@ import multiprocessing
 import h5py
 import quimb as qu
 
-from models import SpinChain
-from utils import get_params_from_cmdline
+from lda.models import SpinChain
+from lda.utils import get_params_from_cmdline
 
 
-prms = {'L' : 50,                # length of spin chain
-        'sites' : [0, 1],        # sites of the subsystem S spins
-        'omega' : 1,             # Rabi frequency
-        'potential' : [0.5],     # interaction of subsystem's S spins
-        'potential_' : None,     # interaction of bath spins, if None same as potential
-        'T' : 10,                # total time for the evolution
-        'dt' : 0.01,             # interval every which save the data
-        'cutoff' : 1e-8,         # cutoff for TEBD algorithm
-        'im_cutoff' : 1e-10,     # cutoff for TEBD algorithm, img t-e
-        'tolerance' : 1e-5,      # Trotter tolerance for TEBD algorithm
-        'verbose' : True,        # verbosity of the script
-        'num_traj' : 30,         # how many trajectories to do
-        # file to save the data
-        'fname' : './data/data_tebd.hdf5'
-        }
+prms = {
+    'L': 50,  # length of spin chain
+    'sites': [0, 1],  # sites of the subsystem S spins
+    'omega': 1,  # Rabi frequency
+    'potential': [0.5],  # interaction of subsystem's S spins
+    'potential_': None,  # interaction of bath spins, if None same as potential
+    'T': 10,  # total time for the evolution
+    'dt': 0.01,  # interval every which save the data
+    'cutoff': 1e-8,  # cutoff for TEBD algorithm
+    'im_cutoff': 1e-10,  # cutoff for TEBD algorithm, img t-e
+    'tolerance': 1e-5,  # Trotter tolerance for TEBD algorithm
+    'verbose': True,  # verbosity of the script
+    'num_traj': 30,  # how many trajectories to do
+    # file to save the data
+    'fname': './data/data_tebd.hdf5',
+}
+
 
 def generate_data(default_params, argv=[1]):
     '''Here I generate the data for the spin chain
@@ -80,7 +82,6 @@ def generate_data(default_params, argv=[1]):
     n_simulations = len(prms['potential'])
     count = 1
     for vv in prms['potential']:
-
         sys_prms['potential'] = vv
 
         # create the output array
@@ -102,15 +103,20 @@ def generate_data(default_params, argv=[1]):
 
         # or normal loop
         for i in range(prms['num_traj']):
-            X.extend(execute_trajectories(sys_prms, seed*(i+1)))
+            X.extend(execute_trajectories(sys_prms, seed * (i + 1)))
 
         # save to file
         file = h5py.File(prms['fname'], 'a')
 
         # group name in hdf5 file
-        gname = 'cohVec_L_' + str(prms['L']) + \
-            '_V_' + str(int(vv*1e3)).zfill(4) + \
-            '_dt_' + str(int(prms['dt']*1e3)).zfill(4)
+        gname = (
+            'cohVec_L_'
+            + str(prms['L'])
+            + '_V_'
+            + str(int(vv * 1e3)).zfill(4)
+            + '_dt_'
+            + str(int(prms['dt'] * 1e3)).zfill(4)
+        )
         # create the subgroup
         subg = file.create_group(gname)
 
@@ -119,6 +125,7 @@ def generate_data(default_params, argv=[1]):
         file.close()
 
         count += 1
+
 
 def execute_trajectories(sys_prms, seed):
     '''Little function needed for the
@@ -129,6 +136,7 @@ def execute_trajectories(sys_prms, seed):
     system.evolve(seed)
 
     return system.return_results()
+
 
 if __name__ == '__main__':
     argv = sys.argv
