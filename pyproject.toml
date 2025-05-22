@@ -25,7 +25,14 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = []
+dependencies = [
+  "coverage[toml]>=6.5",
+  "pytest",
+  "numpy>=1.21.5",
+  "torch>=2.1.0",
+  "matplotlib>=3.6.2",
+  "opt_einsum==3.3.0"
+]
 
 [project.urls]
 Documentation = "https://github.com/giovannicemin/lindblad_dynamics_approximator/blob/master/README.md"
@@ -34,13 +41,7 @@ Documentation = "https://github.com/giovannicemin/lindblad_dynamics_approximator
 path = "src/lda/__about__.py"
 
 [tool.hatch.envs.default]
-dependencies = [
-  "coverage[toml]>=6.5",
-  "pytest",
-  "numpy>=1.21.5",
-  "pytorch>=1.13.1",
-  "matplotlib>=3.6.2",
-]
+dependencies = []
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"

@@ -1,0 +1,16 @@
+name: lda
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.7
+  - numpy>=1.21.5
+  - matplotlib>=3.6.2
+  - pytorch>=1.13.1
+  - opt_einsum==3.3.0
+  - h5py
+  - pandas
+  - quimb
+  - pytest
+  - pip
+  - pip:
+      - -e .  # install lda project in editable mode
