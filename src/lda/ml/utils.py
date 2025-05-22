@@ -8,6 +8,7 @@ import getopt
 import sys
 from torch.utils.data.sampler import SubsetRandomSampler
 
+
 def calculate_error(results_ml, results_tebd, T, dt):
     '''Function to calculate the error defined as
     the normalized norm squared of the difference
@@ -34,47 +35,43 @@ def calculate_error(results_ml, results_tebd, T, dt):
 
     # to do thigs right first and last element shoul be *1/2
     for v_ml, v_tebd in zip(results_ml, results_tebd):
-        integral += (np.linalg.norm(v_ml - v_tebd) / np.linalg.norm(v_tebd) )**2
+        integral += (np.linalg.norm(v_ml - v_tebd) / np.linalg.norm(v_tebd)) ** 2
 
-    return integral * (dt/T)
+    return integral * (dt / T)
+
 
 def get_arch_from_layer_list(input_dim, output_dim, layers):
-    ''' Function returning the NN architecture from layer list
-    '''
+    '''Function returning the NN architecture from layer list'''
     layers_module_list = nn.ModuleList([])
     # layers represent the structure of the NN
     layers = [input_dim] + layers + [output_dim]
-    for i in range(len(layers)-1):
-        layers_module_list.append(nn.Linear(layers[i], layers[i+1]))
+    for i in range(len(layers) - 1):
+        layers_module_list.append(nn.Linear(layers[i], layers[i + 1]))
     return layers_module_list
+
 
 def pauli_s_const():
     '''Function returning the structure constants
     for 2 spin algebra
     '''
-    s_x = np.array([[ 0,  1 ], [ 1,  0 ]], dtype=np.complex64)
-    s_z = np.array([[ 1,  0 ], [ 0, -1 ]], dtype=np.complex64)
-    s_y = np.array([[ 0, -1j], [ 1j, 0 ]], dtype=np.complex64)
-    Id  = np.eye(2)
-    pauli_dict = {
-       'X' : s_x,
-       'Y' : s_y,
-       'Z' : s_z,
-       'I' : Id
-    }
+    s_x = np.array([[0, 1], [1, 0]], dtype=np.complex64)
+    s_z = np.array([[1, 0], [0, -1]], dtype=np.complex64)
+    s_y = np.array([[0, -1j], [1j, 0]], dtype=np.complex64)
+    Id = np.eye(2)
+    pauli_dict = {'X': s_x, 'Y': s_y, 'Z': s_z, 'I': Id}
 
     # creating the elements of the base
     base_F = []
     for i, j in product(['I', 'X', 'Y', 'Z'], repeat=2):
-        base_F.append( 0.5*np.kron(pauli_dict[i], pauli_dict[j]))
+        base_F.append(0.5 * np.kron(pauli_dict[i], pauli_dict[j]))
 
-    base_F.pop(0) # don't want the identity
-    abc = oe.contract('aij,bjk,cki->abc', base_F, base_F, base_F )
-    acb = oe.contract('aij,bki,cjk->abc', base_F, base_F, base_F )
+    base_F.pop(0)  # don't want the identity
+    abc = oe.contract('aij,bjk,cki->abc', base_F, base_F, base_F)
+    acb = oe.contract('aij,bki,cjk->abc', base_F, base_F, base_F)
 
     # added -, and put 0.25 instead of 0.5
-    f = np.real( -1j*0.25*(abc - acb) )
-    d = np.real( 0.25*(abc + acb) )
+    f = np.real(-1j * 0.25 * (abc - acb))
+    d = np.real(0.25 * (abc + acb))
 
     # return as a torch tensor
     return torch.from_numpy(f).float(), torch.from_numpy(d).float()
@@ -84,8 +81,8 @@ def ensure_empty_dir(directory):
     if len(os.listdir(directory)) != 0:
         raise Exception('Model dir not empty!')
 
-def load_data(path, L, potential, N, M,
-              num_traj, batch_size, validation_split):
+
+def load_data(path, L, potential, N, M, num_traj, batch_size, validation_split):
     '''Function to load the data from hdf5 file.
     Reshuffling of data is performed. Then separates train
     from validation and return the iterables.
@@ -106,12 +103,12 @@ def load_data(path, L, potential, N, M,
     train and validation loaders
     '''
     # put import here to avoid circular imports
-    from ml.classes import CustomDatasetFromHDF5
+    from lda.ml.classes import CustomDatasetFromHDF5
 
     # list of group names
-    gname = 'cohVec_L_' + str(L) + \
-            '_V_' + str(int(potential*1e3)).zfill(4) + \
-            '_N_' + str(int(N)) + '_M_' + str(int(M))
+    gname = (
+        'cohVec_L_' + str(L) + '_V_' + str(int(potential * 1e3)).zfill(4) + '_N_' + str(int(N)) + '_M_' + str(int(M))
+    )
 
     dataset = CustomDatasetFromHDF5(path, gname)
 
@@ -131,12 +128,8 @@ def load_data(path, L, potential, N, M,
     train_sampler = SubsetRandomSampler(train_indices)
     valid_sampler = SubsetRandomSampler(val_indices)
 
-    train_loader = torch.utils.data.DataLoader(dataset,
-                                               batch_size=batch_size,
-                                               sampler=train_sampler)
-    val_loader = torch.utils.data.DataLoader(dataset,
-                                             batch_size=batch_size,
-                                             sampler=valid_sampler)
+    train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=train_sampler)
+    val_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler)
     return train_loader, val_loader
 
 
